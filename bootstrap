@@ -1,0 +1,16 @@
+#! /bin/sh
+
+set -ex
+
+srcdir="$(dirname "$0")"
+test -z "$srcdir" && srcdir=.
+
+cd "$srcdir"
+
+[ -d limine-terminal ] || git clone https://github.com/limine-bootloader/terminal.git limine-terminal
+( cd limine-terminal && git checkout 4f44263ca36a94bb406c56618deed652e27ca0cf )
+
+automake_libdir="$(automake --print-libdir)"
+mkdir -p build-aux
+cp "${automake_libdir}/install-sh" build-aux
+autoreconf -fvi

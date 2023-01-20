@@ -1,0 +1,72 @@
+# Targets and autoconf variables.
+override SRCDIR   := @SRCDIR@
+override BUILDDIR := @BUILDDIR@
+override MKDIR_P  := @MKDIR_P@
+override INSTALL  := @INSTALL@
+override PREFIX   := @prefix@
+override TARGET   := gcon
+
+# Macros to make our build system still work from within paths with spaces
+# or other special characters.
+override SPACE := $(subst ,, )
+MKESCAPE = $(subst $(SPACE),\ ,$(1))
+SHESCAPE = $(subst ','\'',$(1))
+OBJESCAPE = $(subst .a ,.a' ',$(subst .o ,.o' ',$(call SHESCAPE,$(1))))
+
+override CFILES := $(shell cd '$(call SHESCAPE,$(SRCDIR))' && find . -type f -name '*.c')
+override OBJ    := $(addprefix $(call MKESCAPE,$(BUILDDIR))/,$(CFILES:.c=.o))
+override HEADER_DEPS := $(CFILES:.c=.d)
+
+# Flags.
+define DEFAULT_VAR =
+    ifeq ($(origin $1),default)
+        override $(1) := $(2)
+    endif
+    ifeq ($(origin $1),undefined)
+        override $(1) := $(2)
+    endif
+endef
+$(eval $(call DEFAULT_VAR,CC,@CC@))
+CFLAGS   ?= @CFLAGS@ @WERROR@
+CPPFLAGS ?= @CPPFLAGS@
+LDFLAGS  ?= @LDFLAGS@
+
+# Default target.
+.PHONY: all
+all: $(TARGET)
+
+# Link rules for the final kernel executable.
+$(TARGET): $(OBJ)
+	$(CC) '$(call OBJESCAPE,$^)' $(CFLAGS) $(LDFLAGS) -o $@
+
+# Include header dependencies.
+-include $(HEADER_DEPS)
+
+# Compilation rules for *.c files.
+$(call MKESCAPE,$(BUILDDIR))/%.o: $(call MKESCAPE,$(SRCDIR))/%.c
+	$(MKDIR_P) "$$(dirname '$(call SHESCAPE,$@)')"
+	$(CC) $(CPPFLAGS) $(CFLAGS) -I '$(call SHESCAPE,$(SRCDIR))' -I '$(call SHESCAPE,$(SRCDIR))'/limine-terminal \
+	-c '$(call SHESCAPE,$<)' -o $@
+
+# Remove object files and the final executable.
+.PHONY: clean
+clean:
+	rm -rf $(TARGET) $(OBJ) $(HEADER_DEPS)
+
+.PHONY: distclean
+distclean: clean
+	rm -rf config.log config.status GNUmakefile
+
+.PHONY: maintainer-clean
+maintainer-clean: distclean
+	cd '$(call SHESCAPE,$(SRCDIR))' && rm -rf limine-terminal configure build-aux *'~' autom4te.cache
+
+.PHONY: install
+install:
+	$(INSTALL) -d $(DESTDIR)$(PREFIX)/bin
+	$(INSTALL) $(TARGET) $(DESTDIR)$(PREFIX)/bin/
+
+.PHONY: install-strip
+install-strip:
+	$(INSTALL) -d $(DESTDIR)$(PREFIX)/bin
+	$(INSTALL) -s $(TARGET) $(DESTDIR)$(PREFIX)/bin/
