@@ -1,5 +1,13 @@
-// Created by turning unifont-15.0.01 into codepage 437 and then xxd -i.
-// Thanks to the amazing people at https://unifoundry.com/unifont/
+/*
+    font.h: unifont-15.0.01 embedded binary.
+    Copyright (C) 2023 the unifont team
+
+    Dual-licensed under the GPLv2+ and OFL-1.1.
+    GPLv2+  - https://unifoundry.com/LICENSE.txt
+    OFL-1.1 - https://unifoundry.com/OFL-1.1.txt
+
+    Created by turning unifont-15.0.01 into codepage 437 and then xxd -i.
+*/
 
 #define FONT_WIDTH 8
 #define FONT_HEIGHT 16

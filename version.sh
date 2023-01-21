@@ -1,5 +1,5 @@
 #! /bin/sh
-# bootstrap: Script for setting up the repository for use.
+# version.sh: Script for identifying version based on git commits.
 # Copyright (C) 2023 streaksu
 #
 # This program is free software: you can redistribute it and/or modify
@@ -15,17 +15,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-set -ex
+LC_ALL=C
+export LC_ALL
 
 srcdir="$(dirname "$0")"
 test -z "$srcdir" && srcdir=.
 
 cd "$srcdir"
 
-[ -d limine-terminal ] || git clone https://github.com/limine-bootloader/terminal.git limine-terminal
-( cd limine-terminal && git checkout 4f44263ca36a94bb406c56618deed652e27ca0cf )
-
-automake_libdir="$(automake --print-libdir)"
-mkdir -p build-aux
-cp "${automake_libdir}/install-sh" build-aux
-autoreconf -fvi
+[ -f version ] || ( git describe --exact-match --tags $(git log -n1 --pretty='%h') 2>/dev/null || git log -n1 --pretty='%h' ) | sed 's/^v//g' | xargs printf '%s'
+[ -f version ] && ( cat version 2>/dev/null ) | xargs printf '%s'

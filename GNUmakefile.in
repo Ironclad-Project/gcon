@@ -1,3 +1,19 @@
+# GNUmakefile.in: Project's makefile template.
+# Copyright (C) 2023 streaksu
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 # Targets and autoconf variables.
 override SRCDIR   := @SRCDIR@
 override BUILDDIR := @BUILDDIR@
@@ -45,7 +61,7 @@ $(TARGET): $(OBJ)
 # Compilation rules for *.c files.
 $(call MKESCAPE,$(BUILDDIR))/%.o: $(call MKESCAPE,$(SRCDIR))/%.c
 	$(MKDIR_P) "$$(dirname '$(call SHESCAPE,$@)')"
-	$(CC) $(CPPFLAGS) $(CFLAGS) -I '$(call SHESCAPE,$(SRCDIR))' -I '$(call SHESCAPE,$(SRCDIR))'/limine-terminal \
+	$(CC) $(CPPFLAGS) $(CFLAGS) -I '$(call SHESCAPE,$(SRCDIR))'/source -I '$(call SHESCAPE,$(SRCDIR))'/limine-terminal \
 	-c '$(call SHESCAPE,$<)' -o $@
 
 # Remove object files and the final executable.

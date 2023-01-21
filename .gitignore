@@ -2,3 +2,9 @@
 *.d
 gcon
 limine-terminal
+GNUmakefile
+autom4te.cache
+build-aux
+config.log
+config.status
+configure
