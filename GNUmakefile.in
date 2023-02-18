@@ -20,6 +20,7 @@ override BUILDDIR := @BUILDDIR@
 override MKDIR_P  := @MKDIR_P@
 override INSTALL  := @INSTALL@
 override PREFIX   := @prefix@
+override VERSION  := @PACKAGE_VERSION@
 override TARGET   := gcon
 
 # These 2 are needed as-is for AC*DIR.
@@ -91,6 +92,24 @@ clean:
 .PHONY: distclean
 distclean: clean
 	rm -rf config.log config.status GNUmakefile
+
+.PHONY: dist
+dist:
+	rm -rf "$(TARGET)-$(VERSION)"
+	$(MKDIR_P) "$(TARGET)-$(VERSION)"
+	cp -rp '$(call SHESCAPE,$(SRCDIR))'/.git "$(TARGET)-$(VERSION)"/
+	cd "$(TARGET)-$(VERSION)" && git checkout .
+	cd "$(TARGET)-$(VERSION)" && ./bootstrap
+	rm -rf "$(TARGET)-$(VERSION)"/limine-terminal/.git
+	rm -rf "$(TARGET)-$(VERSION)"/limine-terminal/.gitignore
+	rm -rf "$(TARGET)-$(VERSION)"/.git
+	rm -rf "$(TARGET)-$(VERSION)"/.gitignore
+	rm -rf "$(TARGET)-$(VERSION)"/.github
+	rm -rf "$(TARGET)-$(VERSION)"/autom4te.cache
+	echo "$(VERSION)" >"$(TARGET)-$(VERSION)"/version
+	tar -Jcf "$(TARGET)-$(VERSION)".tar.xz "$(TARGET)-$(VERSION)"
+	tar -zcf "$(TARGET)-$(VERSION)".tar.gz "$(TARGET)-$(VERSION)"
+	rm -rf "$(TARGET)-$(VERSION)"
 
 .PHONY: maintainer-clean
 maintainer-clean: distclean
