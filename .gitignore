@@ -1,5 +1,7 @@
 *.o
 *.d
+*.tar.gz
+*.tar.xz
 gcon
 limine-terminal
 GNUmakefile
