@@ -22,6 +22,12 @@ override INSTALL  := @INSTALL@
 override PREFIX   := @prefix@
 override TARGET   := gcon
 
+# These 2 are needed as-is for AC*DIR.
+override prefix := @prefix@
+override exec_prefix := @exec_prefix@
+
+override ACBINDIR := @bindir@
+
 # Macros to make our build system still work from within paths with spaces
 # or other special characters.
 override SPACE := $(subst ,, )
@@ -29,11 +35,12 @@ MKESCAPE = $(subst $(SPACE),\ ,$(1))
 SHESCAPE = $(subst ','\'',$(1))
 OBJESCAPE = $(subst .a ,.a' ',$(subst .o ,.o' ',$(call SHESCAPE,$(1))))
 
+# File lists.
 override CFILES := $(shell cd '$(call SHESCAPE,$(SRCDIR))' && find . -type f -name '*.c')
 override OBJ    := $(addprefix $(call MKESCAPE,$(BUILDDIR))/,$(CFILES:.c=.o))
 override HEADER_DEPS := $(CFILES:.c=.d)
 
-# Flags.
+# DEFAULT_VAR definition.
 define DEFAULT_VAR =
     ifeq ($(origin $1),default)
         override $(1) := $(2)
@@ -42,18 +49,31 @@ define DEFAULT_VAR =
         override $(1) := $(2)
     endif
 endef
+
+# Generator executables.
 $(eval $(call DEFAULT_VAR,CC,@CC@))
-CFLAGS   ?= @CFLAGS@ @WERROR@
+override NATIVE_STRIP := @NATIVE_STRIP@
+
+# User command flags.
+CFLAGS   ?= @CFLAGS@
 CPPFLAGS ?= @CPPFLAGS@
 LDFLAGS  ?= @LDFLAGS@
+LIBS     ?= @LIBS@
+
+# Needed command flags.
+override CFLAGS += \
+    -std=gnu11
+override CPPFLAGS += \
+    -I '$(call SHESCAPE,$(SRCDIR))'/source \
+    -I '$(call SHESCAPE,$(SRCDIR))'/limine-terminal
 
 # Default target.
 .PHONY: all
 all: $(TARGET)
 
-# Link rules for the final kernel executable.
+# Link rules for the final executable.
 $(TARGET): $(OBJ)
-	$(CC) '$(call OBJESCAPE,$^)' $(CFLAGS) $(LDFLAGS) -o $@
+	$(CC) $(CFLAGS) '$(call OBJESCAPE,$^)' $(LDFLAGS) $(LIBS) -o $@
 
 # Include header dependencies.
 -include $(HEADER_DEPS)
@@ -61,8 +81,7 @@ $(TARGET): $(OBJ)
 # Compilation rules for *.c files.
 $(call MKESCAPE,$(BUILDDIR))/%.o: $(call MKESCAPE,$(SRCDIR))/%.c
 	$(MKDIR_P) "$$(dirname '$(call SHESCAPE,$@)')"
-	$(CC) $(CPPFLAGS) $(CFLAGS) -I '$(call SHESCAPE,$(SRCDIR))'/source -I '$(call SHESCAPE,$(SRCDIR))'/limine-terminal \
-	-c '$(call SHESCAPE,$<)' -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c '$(call SHESCAPE,$<)' -o $@
 
 # Remove object files and the final executable.
 .PHONY: clean
@@ -79,10 +98,9 @@ maintainer-clean: distclean
 
 .PHONY: install
 install:
-	$(INSTALL) -d $(DESTDIR)$(PREFIX)/bin
-	$(INSTALL) $(TARGET) $(DESTDIR)$(PREFIX)/bin/
+	$(INSTALL) -d $(DESTDIR)$(ACBINDIR)
+	$(INSTALL) $(TARGET) $(DESTDIR)$(ACBINDIR)/
 
 .PHONY: install-strip
-install-strip:
-	$(INSTALL) -d $(DESTDIR)$(PREFIX)/bin
-	$(INSTALL) -s $(TARGET) $(DESTDIR)$(PREFIX)/bin/
+install-strip: install
+	$(NATIVE_STRIP) $(DESTDIR)$(ACBINDIR)/$(TARGET)
