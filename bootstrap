@@ -22,8 +22,12 @@ test -z "$srcdir" && srcdir=.
 
 cd "$srcdir"
 
-[ -d limine-terminal ] || git clone https://github.com/limine-bootloader/terminal.git limine-terminal
-( cd limine-terminal && git checkout 0da2b853c857fb508d68d4c45f1fcd380efb9b9a )
+if ! [ -d limine-terminal ]; then
+    git clone https://github.com/limine-bootloader/terminal.git limine-terminal
+    cd limine-terminal
+    git checkout 0da2b853c857fb508d68d4c45f1fcd380efb9b9a
+    cd ..
+fi
 
 automake_libdir="$(automake --print-libdir)"
 mkdir -p build-aux
