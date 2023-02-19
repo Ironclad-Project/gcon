@@ -80,7 +80,7 @@ all: $(TARGET)
 
 # Link rules for the final executable.
 $(TARGET): $(OBJ)
-	$(CC) $(CFLAGS) '$(call OBJESCAPE,$^)' $(LDFLAGS) $(LIBS) -o $@
+	$(CC) $(CFLAGS) $(LDFLAGS) '$(call OBJESCAPE,$^)' $(LIBS) -o $@
 
 # Include header dependencies.
 -include $(HEADER_DEPS)
