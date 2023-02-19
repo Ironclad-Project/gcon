@@ -30,7 +30,8 @@ test "x$CFLAGS" = "x" && CFLAGS='-g -O2 -pipe -Wall -Wextra'
 AC_LANG([C])
 AC_PROG_CC
 
-AC_CHECK_HEADERS([stdio.h unistd.h fcntl.h linux/fb.h stdlib.h sys/mman.h sys/wait.h sys/ioctl.h termios.h])
+AC_CHECK_HEADERS([stdio.h unistd.h fcntl.h linux/fb.h stdlib.h sys/mman.h sys/wait.h sys/ioctl.h termios.h],
+    [], AC_MSG_ERROR([required header not found]))
 
 werror_state="no"
 AC_ARG_ENABLE([werror],
