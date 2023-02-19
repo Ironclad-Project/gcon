@@ -14,6 +14,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+# Nuke built-in rules and variables
+override MAKEFLAGS += -rR
+
 # Misc autoconf variable imports.
 override SRCDIR := @SRCDIR@
 override BUILDDIR := @BUILDDIR@
@@ -36,7 +39,7 @@ OBJESCAPE = $(subst .a ,.a' ',$(subst .o ,.o' ',$(call SHESCAPE,$(1))))
 
 # File lists.
 override CFILES := $(shell cd '$(call SHESCAPE,$(SRCDIR))' && find . -type f -name '*.c')
-override OBJ    := $(addprefix $(call MKESCAPE,$(BUILDDIR))/,$(CFILES:.c=.o))
+override OBJ := $(addprefix $(call MKESCAPE,$(BUILDDIR))/,$(CFILES:.c=.o))
 override HEADER_DEPS := $(CFILES:.c=.d)
 
 # DEFAULT_VAR definition.
@@ -54,6 +57,7 @@ $(eval $(call DEFAULT_VAR,CC,@CC@))
 override NATIVE_STRIP := @NATIVE_STRIP@
 override MKDIR_P := @MKDIR_P@
 override INSTALL := @INSTALL@
+override INSTALL_PROGRAM := @INSTALL_PROGRAM@
 
 # User command flags.
 CFLAGS ?= @CFLAGS@
@@ -84,7 +88,7 @@ $(TARGET): $(OBJ)
 # Compilation rules for *.c files.
 $(call MKESCAPE,$(BUILDDIR))/%.o: $(call MKESCAPE,$(SRCDIR))/%.c
 	$(MKDIR_P) "$$(dirname '$(call SHESCAPE,$@)')"
-	$(CC) $(CPPFLAGS) $(CFLAGS) -c '$(call SHESCAPE,$<)' -o $@
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c '$(call SHESCAPE,$<)' -o '$(call SHESCAPE,$@)'
 
 # Remove object files and the final executable.
 .PHONY: clean
@@ -122,11 +126,16 @@ maintainer-clean: distclean
 
 # Install files and executables to the final locations.
 .PHONY: install
-install:
-	$(INSTALL) -d $(DESTDIR)$(ACBINDIR)
-	$(INSTALL) $(TARGET) $(DESTDIR)$(ACBINDIR)/
+install: all
+	$(INSTALL) -d '$(call SHESCAPE,$(DESTDIR)$(ACBINDIR))'
+	$(INSTALL_PROGRAM) $(TARGET) '$(call SHESCAPE,$(DESTDIR)$(ACBINDIR))/'
 
 # Install and strip executables.
 .PHONY: install-strip
 install-strip: install
-	$(NATIVE_STRIP) $(DESTDIR)$(ACBINDIR)/$(TARGET)
+	$(NATIVE_STRIP) '$(call SHESCAPE,$(DESTDIR)$(ACBINDIR))/$(TARGET)'
+
+# Uninstall previously installed files and executables.
+.PHONY: uninstall
+uninstall:
+	rm -f '$(call SHESCAPE,$(DESTDIR)$(ACBINDIR))/$(TARGET)'
