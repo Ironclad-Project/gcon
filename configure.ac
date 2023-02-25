@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-AC_INIT([gcon], m4_esyscmd([./version.sh]), [https://github.com/streaksu/gcon/issues], [gcon])
+AC_INIT([gcon], [m4_esyscmd([./version.sh])], [https://github.com/streaksu/gcon/issues], [gcon])
 
 AC_PREREQ([2.69])
 AC_CONFIG_AUX_DIR([build-aux])
@@ -31,11 +31,11 @@ AC_LANG([C])
 AC_PROG_CC
 
 AC_CHECK_HEADERS([stdio.h unistd.h fcntl.h linux/fb.h stdlib.h sys/mman.h sys/wait.h sys/ioctl.h termios.h],
-    [], AC_MSG_ERROR([required header not found]))
+    [], [AC_MSG_ERROR([required header not found])])
 
 werror_state="no"
 AC_ARG_ENABLE([werror],
-    AS_HELP_STRING([--enable-werror], [treat warnings as errors]),
+    [AS_HELP_STRING([--enable-werror], [treat warnings as errors])],
     [werror_state="$enableval"])
 if test "$werror_state" = "yes"; then
     CFLAGS="$CFLAGS -Werror"
