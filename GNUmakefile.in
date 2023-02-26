@@ -66,7 +66,9 @@ LIBS ?= @LIBS@
 
 # Needed command flags.
 override CFLAGS += \
-    -std=gnu11
+    -std=gnu11 \
+    -Wshadow   \
+    -Wvla
 
 override CPPFLAGS := \
     -I'$(call SHESCAPE,$(SRCDIR))/source' \
