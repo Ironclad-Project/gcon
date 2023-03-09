@@ -22,6 +22,7 @@
 #include <fcntl.h>
 #include <linux/fb.h>
 #include <sys/ttydefaults.h>
+#include <sys/syscall.h>
 #include <term.h>
 #include <backends/framebuffer.h>
 #include <stdlib.h>
@@ -32,6 +33,7 @@
 #include <font.h>
 #include <ctype.h>
 #include <stdnoreturn.h>
+#include <pty.h>
 
 static char *const start_path = "/sbin/epoch";
 static char *const args[] = {start_path, "--init", NULL};
@@ -416,33 +418,7 @@ int main(void) {
     }
 
     // Create a pipe for stdout/stderr.
-    int pty_spawner = open("/dev/ptmx", O_RDWR);
-    if (pty_spawner == -1) {
-      perror("Could not open ptmx");
-      return 1;
-    }
-
-    if (ioctl(pty_spawner, 0, &master_pty) != 0) {
-        perror("Could not create pty");
-        return 1;
-    }
-
-    struct winsize win_size = {
-        .ws_row = var_info.yres / FONT_HEIGHT,
-        .ws_col = var_info.xres / FONT_WIDTH,
-        .ws_xpixel = var_info.xres,
-        .ws_ypixel = var_info.yres
-    };
-    if (ioctl(master_pty, TIOCSWINSZ, &win_size) == -1) {
-        perror("Could not set pty size");
-        return 1;
-    }
-
     struct termios termios;
-    if (tcgetattr(master_pty, &termios) < 0) {
-        perror("Could not fetch termios");
-    }
-
     termios.c_iflag = BRKINT | IGNPAR | ICRNL | IXON | IMAXBEL;
     termios.c_oflag = OPOST | ONLCR;
     termios.c_cflag = CS8 | CREAD;
@@ -453,8 +429,17 @@ int main(void) {
     termios.ibaud = 38400;
     termios.obaud = 38400;
 
-    if (tcsetattr(master_pty, TCSAFLUSH, &termios) < 0) {
-        perror("Could not set termios");
+    struct winsize win_size = {
+        .ws_row = var_info.yres / FONT_HEIGHT,
+        .ws_col = var_info.xres / FONT_WIDTH,
+        .ws_xpixel = var_info.xres,
+        .ws_ypixel = var_info.yres
+    };
+
+    int slave_pty;
+    if (openpty(&master_pty, &slave_pty, NULL, &termios, &win_size) == -1) {
+        perror("Could not create pty");
+        return 1;
     }
 
     // Export some variables related to the TTY.
@@ -464,12 +449,6 @@ int main(void) {
     int child = fork();
     if (child == 0) {
         // Replace std streams.
-        int slave_pty;
-        if (ioctl(master_pty, 0, &slave_pty) != 0) {
-            perror("Could not create pty");
-            return 1;
-        }
-
         dup2(slave_pty, 0);
         dup2(slave_pty, 1);
         dup2(slave_pty, 2);
