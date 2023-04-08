@@ -23,7 +23,7 @@
 #include <linux/fb.h>
 #include <sys/ttydefaults.h>
 #include <sys/syscall.h>
-#include <term.h>
+#include <flanterm/flanterm.h>
 #include <flanterm/backends/fb.h>
 #include <stdlib.h>
 #include <sys/mman.h>
