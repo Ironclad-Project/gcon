@@ -24,7 +24,7 @@
 #include <sys/ttydefaults.h>
 #include <sys/syscall.h>
 #include <term.h>
-#include <backends/framebuffer.h>
+#include <flanterm/backends/fb.h>
 #include <stdlib.h>
 #include <sys/mman.h>
 #include <sys/wait.h>
@@ -40,7 +40,7 @@ static char *const args[] = {start_path, "--init", NULL};
 
 static int  kb;
 static bool tty_mutex;
-struct term_context *term;
+struct flanterm_context *term;
 static int master_pty;
 
 static const char convtab_capslock[] = {
@@ -93,7 +93,7 @@ static void locked_term_write(const char *msg, size_t len) {
     while (__atomic_test_and_set(&tty_mutex, __ATOMIC_SEQ_CST)) {
         sched_yield();
     }
-    term_write(term, msg, len);
+    flanterm_write(term, msg, len);
     __atomic_clear(&tty_mutex, __ATOMIC_SEQ_CST);
 }
 
@@ -109,7 +109,7 @@ static void dec_private(uint64_t esc_val_count, uint32_t *esc_values, uint64_t f
     }
 }
 
-static void limine_term_callback(struct term_context *t1, uint64_t t, uint64_t a, uint64_t b, uint64_t c) {
+static void flanterm_callback(struct flanterm_context *t1, uint64_t t, uint64_t a, uint64_t b, uint64_t c) {
     (void)t1;
 
     switch (t) {
@@ -383,7 +383,7 @@ int main(void) {
         0x4FD2FD,
         0xF6F5F4
     };
-    term = fbterm_init(
+    term = flanterm_fb_init(
         malloc,
         mem_window,
         var_info.xres,
@@ -404,7 +404,7 @@ int main(void) {
         1,
         0
     );
-    term->callback = limine_term_callback;
+    term->callback = flanterm_callback;
     term->full_refresh(term);
 
     // Free the mutex.

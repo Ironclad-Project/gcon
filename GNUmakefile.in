@@ -51,18 +51,20 @@ define DEFAULT_VAR =
     endif
 endef
 
-# Generator executables.
+# Overridable generator executables.
 $(eval $(call DEFAULT_VAR,CC,@CC@))
+
+# Non-overridable generator executables.
 override NATIVE_STRIP := @NATIVE_STRIP@
 override MKDIR_P := @MKDIR_P@
 override INSTALL := @INSTALL@
 override INSTALL_PROGRAM := @INSTALL_PROGRAM@
 
 # User command flags.
-CFLAGS ?= @CFLAGS@
-CPPFLAGS ?= @CPPFLAGS@
-LDFLAGS ?= @LDFLAGS@
-LIBS ?= @LIBS@
+$(eval $(call DEFAULT_VAR,CFLAGS,@CFLAGS@))
+$(eval $(call DEFAULT_VAR,CPPFLAGS,@CPPFLAGS@))
+$(eval $(call DEFAULT_VAR,LDFLAGS,@LDFLAGS@))
+$(eval $(call DEFAULT_VAR,LIBS,@LIBS@))
 
 # Needed command flags.
 override CFLAGS += \
@@ -72,9 +74,9 @@ override CFLAGS += \
 
 override CPPFLAGS := \
     -I'$(call SHESCAPE,$(SRCDIR))/source' \
-    -I'$(call SHESCAPE,$(SRCDIR))/limine-terminal' \
     $(CPPFLAGS) \
-    -MMD
+    -MMD \
+    -MP
 
 # Default target.
 .PHONY: all
@@ -115,8 +117,8 @@ dist:
 	rm -rf "$(PACKAGE_TARNAME)-$(PACKAGE_VERSION)"/.gitignore
 	rm -rf "$(PACKAGE_TARNAME)-$(PACKAGE_VERSION)"/.github
 	rm -rf "$(PACKAGE_TARNAME)-$(PACKAGE_VERSION)"/autom4te.cache
-	rm -rf "$(PACKAGE_TARNAME)-$(PACKAGE_VERSION)"/limine-terminal/.git
-	rm -rf "$(PACKAGE_TARNAME)-$(PACKAGE_VERSION)"/limine-terminal/.gitignore
+	rm -rf "$(PACKAGE_TARNAME)-$(PACKAGE_VERSION)"/source/flanterm/.git
+	rm -rf "$(PACKAGE_TARNAME)-$(PACKAGE_VERSION)"/source/flanterm/.gitignore
 	echo "$(PACKAGE_VERSION)" >"$(PACKAGE_TARNAME)-$(PACKAGE_VERSION)"/version
 	tar -Jcf "$(PACKAGE_TARNAME)-$(PACKAGE_VERSION)".tar.xz "$(PACKAGE_TARNAME)-$(PACKAGE_VERSION)"
 	tar -zcf "$(PACKAGE_TARNAME)-$(PACKAGE_VERSION)".tar.gz "$(PACKAGE_TARNAME)-$(PACKAGE_VERSION)"
@@ -125,7 +127,7 @@ dist:
 # Remove ALL generated files.
 .PHONY: maintainer-clean
 maintainer-clean: distclean
-	cd '$(call SHESCAPE,$(SRCDIR))' && rm -rf limine-terminal configure build-aux *'~' autom4te.cache
+	cd '$(call SHESCAPE,$(SRCDIR))' && rm -rf source/flanterm configure build-aux *'~' autom4te.cache
 
 # Install files and executables to the final locations.
 .PHONY: install
