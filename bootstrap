@@ -22,14 +22,14 @@ test -z "$srcdir" && srcdir=.
 
 cd "$srcdir"
 
-if ! [ -d limine-terminal ]; then
-    git clone https://github.com/limine-bootloader/terminal.git limine-terminal
-    cd limine-terminal
-    git checkout 0da2b853c857fb508d68d4c45f1fcd380efb9b9a
-    cd ..
+if ! [ -d source/flanterm ]; then
+    git clone https://github.com/mintsuki/flanterm.git source/flanterm
+    cd source/flanterm
+    git checkout f95f5584fb87577908beff8cbe0f68fee8940517
+    cd ../..
 fi
 
-automake_libdir="$(automake --print-libdir)"
 mkdir -p build-aux
-cp "${automake_libdir}/install-sh" build-aux
-autoreconf -fvi
+cp "$(automake --print-libdir)/install-sh" build-aux
+
+autoreconf -fvi -Wall
