@@ -196,132 +196,136 @@ static noreturn void *kb_input_thread(void *arg) {
     bool capslock_active = false;
 
     for (;;) {
-        uint8_t input_byte;
-        read(kb, &input_byte, 1);
+        uint8_t input_bytes[5];
+        ssize_t count = read(kb, &input_bytes, 5);
         if (tcgetattr(master_pty, &config) < 0) {
             perror("Could not fetch termios in keyboard input thread");
         }
 
-        if (input_byte == 0xe0) {
-            extra_scancodes = true;
-            continue;
-        }
+        for (ssize_t i = 0; i < count; i++) {
+            if (input_bytes[i] == 0xe0) {
+                extra_scancodes = true;
+                continue;
+            }
 
-        if (extra_scancodes == true) {
-            extra_scancodes = false;
+            if (extra_scancodes == true) {
+                extra_scancodes = false;
 
-            switch (input_byte) {
+                switch (input_bytes[i]) {
+                    case SCANCODE_CTRL:
+                        ctrl_active = true;
+                        continue;
+                    case SCANCODE_CTRL_REL:
+                    ctrl_active = false;
+                        continue;
+                    case 0x1c:
+                        add_to_buf(&config, "\n", 1, true);
+                        continue;
+                    case 0x35:
+                        add_to_buf(&config, "/", 1, true);
+                        continue;
+                    case 0x48: // up arrow
+                        if (decckm == false) {
+                            add_to_buf(&config, "\e[A", 3, true);
+                        } else {
+                            add_to_buf(&config, "\eOA", 3, true);
+                        }
+                        continue;
+                    case 0x4b: // left arrow
+                        if (decckm == false) {
+                            add_to_buf(&config, "\e[D", 3, true);
+                        } else {
+                            add_to_buf(&config, "\eOD", 3, true);
+                        }
+                        continue;
+                    case 0x50: // down arrow
+                        if (decckm == false) {
+                            puts("meow meow");
+                            add_to_buf(&config, "\e[B", 3, true);
+                        } else {
+                            puts("mau mau");
+                            add_to_buf(&config, "\eOB", 3, true);
+                        }
+                        continue;
+                    case 0x4d: // right arrow
+                        if (decckm == false) {
+                            add_to_buf(&config, "\e[C", 3, true);
+                        } else {
+                            add_to_buf(&config, "\eOC", 3, true);
+                        }
+                        continue;
+                    case 0x47: // home
+                        add_to_buf(&config, "\e[1~", 4, true);
+                        continue;
+                    case 0x4f: // end
+                        add_to_buf(&config, "\e[4~", 4, true);
+                        continue;
+                    case 0x49: // pgup
+                        add_to_buf(&config, "\e[5~", 4, true);
+                        continue;
+                    case 0x51: // pgdown
+                        add_to_buf(&config, "\e[6~", 4, true);
+                        continue;
+                    case 0x53: // delete
+                        add_to_buf(&config, "\e[3~", 4, true);
+                        continue;
+                }
+            }
+
+            switch (input_bytes[i]) {
+                case SCANCODE_NUMLOCK:
+                    //numlock_active = true;
+                    continue;
+                case SCANCODE_ALT_LEFT:
+                    //alt_active = true;
+                    continue;
+                case SCANCODE_ALT_LEFT_REL:
+                    //alt_active = false;
+                    continue;
+                case SCANCODE_SHIFT_LEFT:
+                case SCANCODE_SHIFT_RIGHT:
+                    shift_active = true;
+                    continue;
+                case SCANCODE_SHIFT_LEFT_REL:
+                case SCANCODE_SHIFT_RIGHT_REL:
+                    shift_active = false;
+                    continue;
                 case SCANCODE_CTRL:
                     ctrl_active = true;
                     continue;
                 case SCANCODE_CTRL_REL:
                     ctrl_active = false;
                     continue;
-                case 0x1c:
-                    add_to_buf(&config, "\n", 1, true);
-                    continue;
-                case 0x35:
-                    add_to_buf(&config, "/", 1, true);
-                    continue;
-                case 0x48: // up arrow
-                    if (decckm == false) {
-                        add_to_buf(&config, "\e[A", 3, true);
-                    } else {
-                        add_to_buf(&config, "\eOA", 3, true);
-                    }
-                    continue;
-                case 0x4b: // left arrow
-                    if (decckm == false) {
-                        add_to_buf(&config, "\e[D", 3, true);
-                    } else {
-                        add_to_buf(&config, "\eOD", 3, true);
-                    }
-                    continue;
-                case 0x50: // down arrow
-                    if (decckm == false) {
-                        add_to_buf(&config, "\e[B", 3, true);
-                    } else {
-                        add_to_buf(&config, "\eOB", 3, true);
-                    }
-                    continue;
-                case 0x4d: // right arrow
-                    if (decckm == false) {
-                        add_to_buf(&config, "\e[C", 3, true);
-                    } else {
-                        add_to_buf(&config, "\eOC", 3, true);
-                    }
-                    continue;
-                case 0x47: // home
-                    add_to_buf(&config, "\e[1~", 4, true);
-                    continue;
-                case 0x4f: // end
-                    add_to_buf(&config, "\e[4~", 4, true);
-                    continue;
-                case 0x49: // pgup
-                    add_to_buf(&config, "\e[5~", 4, true);
-                    continue;
-                case 0x51: // pgdown
-                    add_to_buf(&config, "\e[6~", 4, true);
-                    continue;
-                case 0x53: // delete
-                    add_to_buf(&config, "\e[3~", 4, true);
+                case SCANCODE_CAPSLOCK:
+                    capslock_active = !capslock_active;
                     continue;
             }
+
+            char c = 0;
+
+            if (input_bytes[i] < SCANCODE_MAX) {
+                if (capslock_active == false && shift_active == false) {
+                    c = convtab_nomod[input_bytes[i]];
+                }
+                    if (capslock_active == false && shift_active == true) {
+                    c = convtab_shift[input_bytes[i]];
+                }
+                if (capslock_active == true && shift_active == false) {
+                    c = convtab_capslock[input_bytes[i]];
+                }
+                if (capslock_active == true && shift_active == true) {
+                    c = convtab_shift_capslock[input_bytes[i]];
+                }
+            } else {
+                continue;
+            }
+
+            if (ctrl_active) {
+                c = toupper(c) - 0x40;
+            }
+
+            add_to_buf(&config, &c, 1, true);
         }
-
-        switch (input_byte) {
-            case SCANCODE_NUMLOCK:
-                //numlock_active = true;
-                continue;
-            case SCANCODE_ALT_LEFT:
-                //alt_active = true;
-                continue;
-            case SCANCODE_ALT_LEFT_REL:
-                //alt_active = false;
-                continue;
-            case SCANCODE_SHIFT_LEFT:
-            case SCANCODE_SHIFT_RIGHT:
-                shift_active = true;
-                continue;
-            case SCANCODE_SHIFT_LEFT_REL:
-            case SCANCODE_SHIFT_RIGHT_REL:
-                shift_active = false;
-                continue;
-            case SCANCODE_CTRL:
-                ctrl_active = true;
-                continue;
-            case SCANCODE_CTRL_REL:
-                ctrl_active = false;
-                continue;
-            case SCANCODE_CAPSLOCK:
-                capslock_active = !capslock_active;
-                continue;
-        }
-
-        char c = 0;
-
-        if (input_byte < SCANCODE_MAX) {
-            if (capslock_active == false && shift_active == false) {
-                c = convtab_nomod[input_byte];
-            }
-            if (capslock_active == false && shift_active == true) {
-                c = convtab_shift[input_byte];
-            }
-            if (capslock_active == true && shift_active == false) {
-                c = convtab_capslock[input_byte];
-            }
-            if (capslock_active == true && shift_active == true) {
-                c = convtab_shift_capslock[input_byte];
-            }
-        } else {
-            continue;
-        }
-
-        if (ctrl_active) {
-            c = toupper(c) - 0x40;
-        }
-
-        add_to_buf(&config, &c, 1, true);
     }
 }
 
