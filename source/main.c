@@ -88,6 +88,7 @@ static char kbd_buffer[KBD_BUFFER_SIZE];
 static size_t kbd_buffer_i = 0;
 
 static bool decckm = false;
+static int pcspkr;
 
 static void locked_term_write(const char *msg, size_t len) {
     while (__atomic_test_and_set(&tty_mutex, __ATOMIC_SEQ_CST)) {
@@ -113,8 +114,13 @@ static void flanterm_callback(struct flanterm_context *t1, uint64_t t, uint64_t 
     (void)t1;
 
     switch (t) {
-        case 10:
+        case FLANTERM_CB_DEC:
             dec_private(a, (void *)b, c);
+            break;
+        case FLANTERM_CB_BELL:
+            uint32_t frequency = 1000;
+            ioctl(pcspkr, 0, &frequency);
+            break;
     }
 }
 
@@ -338,6 +344,8 @@ int main(void) {
         perror("Could not open framebuffer");
         return 1;
     }
+
+    pcspkr = open("/dev/pcspeaker", O_RDWR);
 
     if (ioctl(fb, FBIOGET_VSCREENINFO, &var_info) == -1) {
         perror("Could not fetch framebuffer properties");
