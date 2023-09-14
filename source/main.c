@@ -246,10 +246,8 @@ static noreturn void *kb_input_thread(void *arg) {
                         continue;
                     case 0x50: // down arrow
                         if (decckm == false) {
-                            puts("meow meow");
                             add_to_buf(&config, "\e[B", 3, true);
                         } else {
-                            puts("mau mau");
                             add_to_buf(&config, "\eOB", 3, true);
                         }
                         continue;
@@ -373,28 +371,8 @@ int main(void) {
     }
 
     // Initialize the terminal.
-    uint32_t background = 0x1E1E1E;
-    uint32_t foreground = 0xD8D8D8;
-    uint32_t dark_palette[] = {
-        0x241F31,
-        0xC01C28,
-        0x2EC27E,
-        0xF5C211,
-        0x1E78E4,
-        0x9841BB,
-        0x0AB9D0,
-        0xC0BFBC
-    };
-    uint32_t bright_palette[] = {
-        0x5E5C64,
-        0xED333B,
-        0x57E389,
-        0xF8E45C,
-        0x51A1FF,
-        0xC061CB,
-        0x4FD2FD,
-        0xF6F5F4
-    };
+    uint32_t background = 0xFFFFFF;
+    uint32_t foreground = 0x000000;
     term = flanterm_fb_init(
         malloc,
         mem_window,
@@ -402,12 +380,12 @@ int main(void) {
         var_info.yres,
         fix_info.smem_len / var_info.yres,
         NULL,
-        dark_palette,
-        bright_palette,
-        &background,
-        &foreground,
-        &background,
-        &foreground,
+        NULL,
+        NULL,
+        NULL,
+        NULL,
+        NULL,
+        NULL,
         unifont_arr,
         FONT_WIDTH,
         FONT_HEIGHT,
