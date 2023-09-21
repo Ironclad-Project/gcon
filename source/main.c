@@ -35,8 +35,8 @@
 #include <stdnoreturn.h>
 #include <pty.h>
 
-static char *const start_path = "/sbin/epoch";
-static char *const args[] = {start_path, "--init", NULL};
+static char *const start_path = "/usr/bin/login";
+static char *const args[] = {start_path, NULL};
 
 static int  kb;
 static bool tty_mutex;
