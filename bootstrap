@@ -22,14 +22,16 @@ test -z "$srcdir" && srcdir=.
 
 cd "$srcdir"
 
-if ! [ -d source/flanterm ]; then
-    git clone https://github.com/mintsuki/flanterm.git source/flanterm
-    cd source/flanterm
+if ! [ -d src/flanterm ]; then
+    git clone https://github.com/mintsuki/flanterm.git src/flanterm
+    cd src/flanterm
     git checkout f95f5584fb87577908beff8cbe0f68fee8940517
     cd ../..
 fi
 
+AUTOMAKE_LIBDIR="$(automake --print-libdir)"
+cp "${AUTOMAKE_LIBDIR}/INSTALL" ./
 mkdir -p build-aux
-cp "$(automake --print-libdir)/install-sh" build-aux
+cp "${AUTOMAKE_LIBDIR}/install-sh" build-aux/
 
 autoreconf -fvi -Wall
