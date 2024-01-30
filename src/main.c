@@ -361,7 +361,7 @@ int main(void) {
         NULL,
         aligned_size,
         PROT_READ | PROT_WRITE,
-        MAP_SHARED | MAP_WC,
+        MAP_SHARED,
         fb,
         0
     );
