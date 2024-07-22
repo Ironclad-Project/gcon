@@ -112,8 +112,8 @@ dist:
 	rm -rf "$(PACKAGE_TARNAME)-$(PACKAGE_VERSION)"/.gitignore
 	rm -rf "$(PACKAGE_TARNAME)-$(PACKAGE_VERSION)"/.github
 	rm -rf "$(PACKAGE_TARNAME)-$(PACKAGE_VERSION)"/autom4te.cache
-	rm -rf "$(PACKAGE_TARNAME)-$(PACKAGE_VERSION)"/source/flanterm/.git
-	rm -rf "$(PACKAGE_TARNAME)-$(PACKAGE_VERSION)"/source/flanterm/.gitignore
+	rm -rf "$(PACKAGE_TARNAME)-$(PACKAGE_VERSION)"/src/flanterm/.git
+	rm -rf "$(PACKAGE_TARNAME)-$(PACKAGE_VERSION)"/src/flanterm/.gitignore
 	echo "$(PACKAGE_VERSION)" >"$(PACKAGE_TARNAME)-$(PACKAGE_VERSION)"/version
 	tar -Jcf "$(PACKAGE_TARNAME)-$(PACKAGE_VERSION)".tar.xz "$(PACKAGE_TARNAME)-$(PACKAGE_VERSION)"
 	tar -zcf "$(PACKAGE_TARNAME)-$(PACKAGE_VERSION)".tar.gz "$(PACKAGE_TARNAME)-$(PACKAGE_VERSION)"
