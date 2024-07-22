@@ -333,6 +333,11 @@ static noreturn void *kb_input_thread(void *arg) {
     }
 }
 
+static void free_with_size(void *ptr, size_t s) {
+    (void)s;
+    free(ptr);
+}
+
 int main(void) {
     // Initialize the tty.
     struct fb_var_screeninfo var_info;
@@ -371,31 +376,23 @@ int main(void) {
     }
 
     // Initialize the terminal.
-    uint32_t background = 0xFFFFFF;
-    uint32_t foreground = 0x000000;
     term = flanterm_fb_init(
         malloc,
+        free_with_size,
         mem_window,
         var_info.xres,
         var_info.yres,
         fix_info.smem_len / var_info.yres,
+        8, 16, 8, 8, 8, 0,
         NULL,
-        NULL,
-        NULL,
-        NULL,
-        NULL,
-        NULL,
-        NULL,
-        unifont_arr,
-        FONT_WIDTH,
-        FONT_HEIGHT,
-        0,
-        1,
-        1,
+        NULL, NULL,
+        NULL, NULL,
+        NULL, NULL,
+        unifont_arr, FONT_WIDTH, FONT_HEIGHT, 0,
+        1, 1,
         0
     );
     term->callback = flanterm_callback;
-    term->full_refresh(term);
 
     // Free the mutex.
     __atomic_clear(&tty_mutex, __ATOMIC_SEQ_CST);
