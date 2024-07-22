@@ -33,7 +33,7 @@ clone_repo_commit() {
     fi
 }
 
-if test -d .git; then
+if ! test -f version; then
     clone_repo_commit https://github.com/mintsuki/flanterm.git src/flanterm $FLANTERM_COMMIT_HASH
 fi
 
