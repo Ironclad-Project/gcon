@@ -69,7 +69,7 @@ override LIBS += \
 
 # Use "find" to glob all *.c files in the tree and obtain the
 # object and header dependency file names.
-override CFILES := $(shell cd '$(call SHESCAPE,$(SRCDIR))/src' && find -L * -type f -name '*.c')
+override CFILES := $(shell cd '$(call SHESCAPE,$(SRCDIR))/src' && find -L * -type f -name '*.c' | LC_ALL=C sort)
 override OBJ := $(addprefix obj/,$(CFILES:.c=.c.o))
 override HEADER_DEPS := $(addprefix obj/,$(CFILES:.c=.c.d))
 
@@ -115,8 +115,11 @@ dist:
 	rm -rf "$(PACKAGE_TARNAME)-$(PACKAGE_VERSION)"/src/flanterm/.git
 	rm -rf "$(PACKAGE_TARNAME)-$(PACKAGE_VERSION)"/src/flanterm/.gitignore
 	echo "$(PACKAGE_VERSION)" >"$(PACKAGE_TARNAME)-$(PACKAGE_VERSION)"/version
-	tar -Jcf "$(PACKAGE_TARNAME)-$(PACKAGE_VERSION)".tar.xz "$(PACKAGE_TARNAME)-$(PACKAGE_VERSION)"
-	tar -zcf "$(PACKAGE_TARNAME)-$(PACKAGE_VERSION)".tar.gz "$(PACKAGE_TARNAME)-$(PACKAGE_VERSION)"
+	tar -cf "$(PACKAGE_TARNAME)-$(PACKAGE_VERSION).tar" "$(PACKAGE_TARNAME)-$(PACKAGE_VERSION)"
+	gzip < "$(PACKAGE_TARNAME)-$(PACKAGE_VERSION).tar" > "$(PACKAGE_TARNAME)-$(PACKAGE_VERSION).tar.gz"
+	( bzip2 < "$(PACKAGE_TARNAME)-$(PACKAGE_VERSION).tar" > "$(PACKAGE_TARNAME)-$(PACKAGE_VERSION).tar.bz2" || rm "$(PACKAGE_TARNAME)-$(PACKAGE_VERSION).tar.bz2" )
+	( xz < "$(PACKAGE_TARNAME)-$(PACKAGE_VERSION).tar" > "$(PACKAGE_TARNAME)-$(PACKAGE_VERSION).tar.xz" || rm "$(PACKAGE_TARNAME)-$(PACKAGE_VERSION).tar.xz" )
+	rm "$(PACKAGE_TARNAME)-$(PACKAGE_VERSION).tar"
 	rm -rf "$(PACKAGE_TARNAME)-$(PACKAGE_VERSION)"
 
 # Remove ALL generated files.

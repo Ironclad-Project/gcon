@@ -1,6 +1,4 @@
-*.o
-*.tar.gz
-*.tar.xz
+*.tar.*
 /obj
 /bin
 /build

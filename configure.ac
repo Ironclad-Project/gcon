@@ -15,7 +15,7 @@ AC_DEFUN([PROG_ABSPATH], [
     esac
 ])
 
-test "x$CFLAGS" = "x" && CFLAGS='-g -O2 -pipe'
+test "x${CFLAGS+set}" = "x" && CFLAGS='-g -O2 -pipe'
 
 AC_LANG([C])
 AC_PROG_CC

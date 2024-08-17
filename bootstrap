@@ -10,8 +10,6 @@ test -z "$srcdir" && srcdir=.
 
 cd "$srcdir"
 
-FLANTERM_COMMIT_HASH=ef07a10cc38b34aa003d17be97a9f3542e275069
-
 AUXFILES="config.guess config.sub install-sh"
 
 clone_repo_commit() {
@@ -33,8 +31,39 @@ clone_repo_commit() {
     fi
 }
 
+download_by_hash() {
+    DOWNLOAD_COMMAND="curl -Lo"
+    if ! command -v $DOWNLOAD_COMMAND >/dev/null 2>&1; then
+        DOWNLOAD_COMMAND="wget -O"
+        if ! command -v $DOWNLOAD_COMMAND >/dev/null 2>&1; then
+            echo "error: Neither curl nor wget found"
+            exit 1
+        fi
+    fi
+    SHA256_COMMAND="sha256sum"
+    if ! command -v $SHA256_COMMAND >/dev/null 2>&1; then
+        SHA256_COMMAND="sha256"
+        if ! command -v $SHA256_COMMAND >/dev/null 2>&1; then
+            echo "error: Cannot find sha256(sum) command"
+            exit 1
+        fi
+    fi
+    if ! test -f $2 || ! $SHA256_COMMAND $2 | grep $3 >/dev/null 2>&1; then
+        rm -f $2
+        mkdir -p $2 && rm -rf $2
+        $DOWNLOAD_COMMAND $2 $1
+        if ! $SHA256_COMMAND $2 | grep $3 >/dev/null 2>&1; then
+            echo "error: Cannot download file '$2' by hash"
+            exit 1
+        fi
+    fi
+}
+
 if ! test -f version; then
-    clone_repo_commit https://github.com/mintsuki/flanterm.git src/flanterm $FLANTERM_COMMIT_HASH
+    clone_repo_commit \
+        https://github.com/mintsuki/flanterm.git \
+        src/flanterm \
+        ef07a10cc38b34aa003d17be97a9f3542e275069
 fi
 
 for auxfile in $AUXFILES; do
