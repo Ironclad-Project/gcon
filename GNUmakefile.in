@@ -36,8 +36,8 @@ override bindir := @bindir@
 # Macros to make our build system still work from within paths with spaces
 # or other special characters.
 override SPACE := $(subst ,, )
-MKESCAPE = $(subst $(SPACE),\ ,$(1))
-SHESCAPE = $(subst ','\'',$(1))
+override MKESCAPE = $(subst $(SPACE),\ ,$(1))
+override SHESCAPE = $(subst ','\'',$(1))
 
 # Internal C flags that should not be changed by the user.
 override CFLAGS += \
