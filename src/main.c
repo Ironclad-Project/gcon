@@ -38,10 +38,17 @@
 static char *const start_path = "/usr/bin/login";
 static char *const args[] = {start_path, NULL};
 
+struct tty_info {
+    struct flanterm_context *context;
+    int master_pty;
+    int slave_pty;
+    int has_init_program;
+};
+
 static int  kb;
 static bool tty_mutex;
-struct flanterm_context *term;
-static int master_pty;
+int current_tty = 0;
+struct tty_info ttys[8];
 
 static const char convtab_capslock[] = {
     '\0', '\e', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', '\b', '\t',
@@ -90,11 +97,11 @@ static size_t kbd_buffer_i = 0;
 static bool decckm = false;
 static int pcspkr;
 
-static void locked_term_write(const char *msg, size_t len) {
+static void locked_term_write(int tty_idx, const char *msg, size_t len) {
     while (__atomic_test_and_set(&tty_mutex, __ATOMIC_SEQ_CST)) {
         sched_yield();
     }
-    flanterm_write(term, msg, len);
+    flanterm_write(ttys[tty_idx].context, msg, len);
     __atomic_clear(&tty_mutex, __ATOMIC_SEQ_CST);
 }
 
@@ -124,6 +131,27 @@ static void flanterm_callback(struct flanterm_context *t1, uint64_t t, uint64_t 
     }
 }
 
+static void do_tty_switch(int tty_idx) {
+    ttys[current_tty].context->autoflush = false;
+    ttys[tty_idx].context->autoflush = true;
+    ttys[tty_idx].context->full_refresh(ttys[tty_idx].context);
+    ttys[tty_idx].context->double_buffer_flush(ttys[tty_idx].context);
+    current_tty = tty_idx;
+
+    if (!ttys[tty_idx].has_init_program) {
+        int child = fork();
+        if (child == 0) {
+           // Replace std streams.
+           dup2(ttys[tty_idx].slave_pty, 0);
+           dup2(ttys[tty_idx].slave_pty, 1);
+           dup2(ttys[tty_idx].slave_pty, 2);
+           execvp(start_path, args);
+           perror("Could not start");
+        }
+        ttys[tty_idx].has_init_program = 1;
+    }
+}
+
 static void add_to_buf_char(struct termios *termios, char c, bool echo) {
     if (c == '\n' && (termios->c_iflag & ICRNL) == 0) {
         c = '\r';
@@ -137,9 +165,9 @@ static void add_to_buf_char(struct termios *termios, char c, bool echo) {
                 }
                 kbd_buffer[kbd_buffer_i++] = c;
                 if (echo && (termios->c_lflag & ECHO)) {
-                    locked_term_write("\n", 1);
+                    locked_term_write(current_tty, "\n", 1);
                 }
-                write(master_pty, kbd_buffer, kbd_buffer_i);
+                write(ttys[current_tty].master_pty, kbd_buffer, kbd_buffer_i);
                 kbd_buffer_i = 0;
                 return;
             }
@@ -157,7 +185,7 @@ static void add_to_buf_char(struct termios *termios, char c, bool echo) {
                 kbd_buffer[kbd_buffer_i] = 0;
                 if (echo && (termios->c_lflag & ECHO) != 0) {
                     for (size_t i = 0; i < to_backspace; i++) {
-                        locked_term_write("\b \b", 3);
+                        locked_term_write(current_tty, "\b \b", 3);
                     }
                 }
                 return;
@@ -169,17 +197,17 @@ static void add_to_buf_char(struct termios *termios, char c, bool echo) {
         }
         kbd_buffer[kbd_buffer_i++] = c;
     } else {
-        write(master_pty, &c, 1);
+        write(ttys[current_tty].master_pty, &c, 1);
     }
 
     if (echo && (termios->c_lflag & ECHO) != 0) {
         if (c >= 0x20 && c <= 0x7e) {
-            locked_term_write(&c, 1);
+            locked_term_write(current_tty, &c, 1);
         } else if (c >= 0x01 && c <= 0x1a) {
             char caret[2];
             caret[0] = '^';
             caret[1] = c + 0x40;
-            locked_term_write(caret, 2);
+            locked_term_write(current_tty, caret, 2);
         }
     }
 }
@@ -197,14 +225,14 @@ static noreturn void *kb_input_thread(void *arg) {
     bool extra_scancodes = false;
     bool ctrl_active = false;
     //bool numlock_active = false;
-    //bool alt_active = false;
+    bool alt_active = false;
     bool shift_active = false;
     bool capslock_active = false;
 
     for (;;) {
         uint8_t input_bytes[5];
         ssize_t count = read(kb, &input_bytes, 5);
-        if (tcgetattr(master_pty, &config) < 0) {
+        if (tcgetattr(ttys[current_tty].master_pty, &config) < 0) {
             perror("Could not fetch termios in keyboard input thread");
         }
 
@@ -281,10 +309,10 @@ static noreturn void *kb_input_thread(void *arg) {
                     //numlock_active = true;
                     continue;
                 case SCANCODE_ALT_LEFT:
-                    //alt_active = true;
+                    alt_active = true;
                     continue;
                 case SCANCODE_ALT_LEFT_REL:
-                    //alt_active = false;
+                    alt_active = false;
                     continue;
                 case SCANCODE_SHIFT_LEFT:
                 case SCANCODE_SHIFT_RIGHT:
@@ -307,7 +335,19 @@ static noreturn void *kb_input_thread(void *arg) {
 
             char c = 0;
 
-            if (input_bytes[i] < SCANCODE_MAX) {
+            if (alt_active) {
+               //  F1-F8 are consecutive from 0x3B to 0x42, those are the
+               //  8 virtual terminals we will support.
+               if (input_bytes[i] < 0x3B || input_bytes[i] > 0x42) {
+                  continue;
+               }
+
+               int f_index = input_bytes[i] - 0x3B;
+               if (f_index != current_tty) {
+                  do_tty_switch(f_index);
+               }
+               continue;
+            } else if (input_bytes[i] < SCANCODE_MAX) {
                 if (capslock_active == false && shift_active == false) {
                     c = convtab_nomod[input_bytes[i]];
                 }
@@ -333,6 +373,17 @@ static noreturn void *kb_input_thread(void *arg) {
     }
 }
 
+static noreturn void *master_input_thread(void *arg) {
+    int tty_idx = (int)arg;
+    char output[512];
+    for (;;) {
+        ssize_t count = read(ttys[tty_idx].master_pty, output, 512);
+        if (count != 0) {
+            locked_term_write(tty_idx, output, count);
+        }
+    }
+}
+
 static void free_with_size(void *ptr, size_t s) {
     (void)s;
     free(ptr);
@@ -348,7 +399,16 @@ int main(void) {
         return 1;
     }
 
+    // Export some variables related to the TTY.
+    putenv("TERM=linux");
+
+    // Open devices.
     pcspkr = open("/dev/pcspeaker", O_RDWR);
+    kb = open("/dev/ps2keyboard", O_RDONLY);
+    if (kb == -1) {
+        perror("Could not open keyboard");
+        return 1;
+    }
 
     if (ioctl(fb, FBIOGET_VSCREENINFO, &var_info) == -1) {
         perror("Could not fetch framebuffer properties");
@@ -375,36 +435,7 @@ int main(void) {
         return 1;
     }
 
-    // Initialize the terminal.
-    term = flanterm_fb_init(
-        malloc,
-        free_with_size,
-        mem_window,
-        var_info.xres,
-        var_info.yres,
-        fix_info.smem_len / var_info.yres,
-        8, 16, 8, 8, 8, 0,
-        NULL,
-        NULL, NULL,
-        NULL, NULL,
-        NULL, NULL,
-        unifont_arr, FONT_WIDTH, FONT_HEIGHT, 0,
-        1, 1,
-        0
-    );
-    term->callback = flanterm_callback;
-
-    // Free the mutex.
-    __atomic_clear(&tty_mutex, __ATOMIC_SEQ_CST);
-
-    // Open the ps2 keyboard for use as new stdin.
-    kb = open("/dev/ps2keyboard", O_RDONLY);
-    if (kb == -1) {
-        perror("Could not open keyboard");
-        return 1;
-    }
-
-    // Create a pipe for stdout/stderr.
+    // Common termios for all terminals.
     struct termios termios;
     termios.c_iflag = BRKINT | IGNPAR | ICRNL | IXON | IMAXBEL;
     termios.c_oflag = OPOST | ONLCR;
@@ -423,26 +454,38 @@ int main(void) {
         .ws_ypixel = var_info.yres
     };
 
-    int slave_pty;
-    if (openpty(&master_pty, &slave_pty, NULL, &termios, &win_size) == -1) {
-        perror("Could not create pty");
-        return 1;
+    // Initialize the terminals.
+    for (int i = 0; i < 8; i++) {
+        ttys[i].context = flanterm_fb_init(
+            malloc,
+            free_with_size,
+            mem_window,
+            var_info.xres,
+            var_info.yres,
+            fix_info.smem_len / var_info.yres,
+            8, 16, 8, 8, 8, 0,
+            NULL,
+            NULL, NULL,
+            NULL, NULL,
+            NULL, NULL,
+            unifont_arr, FONT_WIDTH, FONT_HEIGHT, 0,
+            1, 1,
+            0
+        );
+        ttys[i].context->callback = flanterm_callback;
+        ttys[i].context->autoflush = false;
+        ttys[i].has_init_program = 0;
+
+        // Free the mutex.
+        __atomic_clear(&tty_mutex, __ATOMIC_SEQ_CST);
+
+       if (openpty(&(ttys[i].master_pty), &(ttys[i].slave_pty), NULL, &termios, &win_size) == -1) {
+           perror("Could not create pty");
+           return 1;
+       }
     }
 
-    // Export some variables related to the TTY.
-    putenv("TERM=linux");
-
-    // Boot the child.
-    int child = fork();
-    if (child == 0) {
-        // Replace std streams.
-        dup2(slave_pty, 0);
-        dup2(slave_pty, 1);
-        dup2(slave_pty, 2);
-        execvp(start_path, args);
-        perror("Could not start");
-        return 1;
-    }
+    do_tty_switch(0);
 
     // Boot an input process.
     pthread_t input_thread;
@@ -450,12 +493,14 @@ int main(void) {
         perror("Could not create input thread!");
     }
 
-    // Catch what the child says.
-    for (;;) {
-        char output[512];
-        ssize_t count = read(master_pty, output, 512);
-        if (count != 0) {
-            locked_term_write(output, count);
+    // Boot one thread per tty to catch what the master says.
+    for (int i = 0; i < 8; i++) {
+        pthread_t master_thread;
+        if (pthread_create(&master_thread, NULL, master_input_thread, (void *)i)) {
+            perror("Could not create master thread!");
         }
     }
+
+    for (;;);
+
 }
