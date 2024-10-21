@@ -132,6 +132,10 @@ static void flanterm_callback(struct flanterm_context *t1, uint64_t t, uint64_t 
 }
 
 static void do_tty_switch(int tty_idx) {
+    while (__atomic_test_and_set(&tty_mutex, __ATOMIC_SEQ_CST)) {
+        sched_yield();
+    }
+
     ttys[current_tty].context->autoflush = false;
     ttys[tty_idx].context->autoflush = true;
     ttys[tty_idx].context->full_refresh(ttys[tty_idx].context);
@@ -150,6 +154,8 @@ static void do_tty_switch(int tty_idx) {
         }
         ttys[tty_idx].has_init_program = 1;
     }
+
+    __atomic_clear(&tty_mutex, __ATOMIC_SEQ_CST);
 }
 
 static void add_to_buf_char(struct termios *termios, char c, bool echo) {
