@@ -1,6 +1,7 @@
 AC_INIT([gcon], [m4_esyscmd([./version.sh])], [https://github.com/streaksu/gcon/issues], [gcon])
 
 AC_PREREQ([2.69])
+
 AC_CONFIG_AUX_DIR([build-aux])
 
 SRCDIR="$(cd "$srcdir" && pwd -P)"
@@ -44,7 +45,12 @@ fi
 AC_ARG_VAR([STRIP], [strip command])
 
 if ! test -z "$STRIP"; then
-    AC_CHECK_PROG([STRIP_USER_FOUND], [$STRIP], [yes])
+    if test -x "$STRIP"; then
+        STRIP_USER_FOUND=yes
+    else
+        AC_CHECK_PROG([STRIP_USER_FOUND], [$STRIP], [yes])
+    fi
+
     if ! test "x$STRIP_USER_FOUND" = "xyes"; then
         AC_MSG_ERROR([$STRIP not found, please install $STRIP before configuring])
     fi
@@ -65,6 +71,7 @@ AC_SUBST([STRIP])
 PKGCONF_LIBS_LIST=""
 
 PKG_PROG_PKG_CONFIG
+PROG_ABSPATH([PKG_CONFIG])
 
 for lib in $PKGCONF_LIBS_LIST; do
     set -e
