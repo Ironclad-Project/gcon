@@ -149,6 +149,7 @@ static void do_tty_switch(int tty_idx) {
            dup2(ttys[tty_idx].slave_pty, 0);
            dup2(ttys[tty_idx].slave_pty, 1);
            dup2(ttys[tty_idx].slave_pty, 2);
+           ioctl(ttys[tty_idx].slave_pty, TIOCSCTTY, NULL);
            execvp(start_path, args);
            perror("Could not start");
         }
