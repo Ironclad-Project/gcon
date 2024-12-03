@@ -2,42 +2,35 @@
 MAKEFLAGS += -rR
 .SUFFIXES:
 
-# Convenience macro to reliably declare user overridable variables.
-override USER_VARIABLE = $(if $(filter $(origin $(1)),default undefined),$(eval override $(1) := $(2)))
-
-# Import some autoconf variables as make variables.
-# Those beginning with DEFAULT_ are user overridable.
-override SRCDIR := @SRCDIR@
-override PACKAGE_VERSION := @PACKAGE_VERSION@
-override PACKAGE_TARNAME := @PACKAGE_TARNAME@
-override OUTPUT := bin/$(PACKAGE_TARNAME)
-override WERROR_FLAG := @WERROR_FLAG@
-override DEFAULT_CC := @CC@
-$(call USER_VARIABLE,CC,$(DEFAULT_CC))
-override DEFAULT_CFLAGS := @CFLAGS@
-$(call USER_VARIABLE,CFLAGS,$(DEFAULT_CFLAGS))
-override PKGCONF_CFLAGS := @PKGCONF_CFLAGS@
-override DEFAULT_CPPFLAGS := @CPPFLAGS@
-$(call USER_VARIABLE,CPPFLAGS,$(DEFAULT_CPPFLAGS))
-override PKGCONF_CPPFLAGS := @PKGCONF_CPPFLAGS@
-override DEFAULT_LDFLAGS := @LDFLAGS@
-$(call USER_VARIABLE,LDFLAGS,$(DEFAULT_LDFLAGS))
-override DEFAULT_LIBS := @LIBS@
-$(call USER_VARIABLE,LIBS,$(DEFAULT_LIBS))
-override PKGCONF_LIBS := @PKGCONF_LIBS@
-override STRIP := @STRIP@
-override MKDIR_P := @MKDIR_P@
-override INSTALL := @INSTALL@
-override INSTALL_PROGRAM := @INSTALL_PROGRAM@
-override prefix := @prefix@
-override exec_prefix := @exec_prefix@
-override bindir := @bindir@
-
 # Macros to make our build system still work from within paths with spaces
 # or other special characters.
 override SPACE := $(subst ,, )
 override MKESCAPE = $(subst $(SPACE),\ ,$(1))
 override SHESCAPE = $(subst ','\'',$(1))
+
+# Import some autoconf variables as make variables.
+override SRCDIR := @SRCDIR@
+override PACKAGE_VERSION := @PACKAGE_VERSION@
+override PACKAGE_TARNAME := @PACKAGE_TARNAME@
+override OUTPUT := bin/$(PACKAGE_TARNAME)
+override WERROR_FLAG := @WERROR_FLAG@
+override PKGCONF_CFLAGS := @PKGCONF_CFLAGS@
+override PKGCONF_CPPFLAGS := @PKGCONF_CPPFLAGS@
+override PKGCONF_LIBS := @PKGCONF_LIBS@
+
+# Import autoconf variables that we allow the user to override.
+CC := @CC@
+CFLAGS := @CFLAGS@
+CPPFLAGS := @CPPFLAGS@
+LDFLAGS := @LDFLAGS@
+LIBS := @LIBS@
+STRIP := @STRIP@
+MKDIR_P := @MKDIR_P@
+INSTALL := @INSTALL@
+INSTALL_PROGRAM := @INSTALL_PROGRAM@
+prefix := @prefix@
+exec_prefix := @exec_prefix@
+bindir := @bindir@
 
 # Internal C flags that should not be changed by the user.
 override CFLAGS += \
@@ -57,7 +50,7 @@ override CPPFLAGS := \
     -MMD \
     -MP
 
-# Internal library flags that should not be changed by the user.
+# Internal libraries that should not be changed by the user.
 override LIBS += \
     $(PKGCONF_LIBS)
 
@@ -67,17 +60,17 @@ override CFILES := $(shell cd '$(call SHESCAPE,$(SRCDIR))/src' && find -L * -typ
 override OBJ := $(addprefix obj/,$(CFILES:.c=.c.o))
 override HEADER_DEPS := $(addprefix obj/,$(CFILES:.c=.c.d))
 
-# Default target.
+# Default target. This must come first, before header dependencies.
 .PHONY: all
 all: $(OUTPUT)
+
+# Include header dependencies.
+-include $(HEADER_DEPS)
 
 # Link rules for the final executable.
 $(OUTPUT): GNUmakefile $(OBJ)
 	$(MKDIR_P) "$$(dirname $@)"
 	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJ) $(LIBS) -o $@
-
-# Include header dependencies.
--include $(HEADER_DEPS)
 
 # Compilation rules for *.c files.
 obj/%.c.o: $(call MKESCAPE,$(SRCDIR))/src/%.c GNUmakefile
