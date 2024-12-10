@@ -13,6 +13,7 @@ override SRCDIR := @SRCDIR@
 override PACKAGE_VERSION := @PACKAGE_VERSION@
 override PACKAGE_TARNAME := @PACKAGE_TARNAME@
 override OUTPUT := bin/$(PACKAGE_TARNAME)
+override DIST_OUTPUT := $(PACKAGE_TARNAME)-$(PACKAGE_VERSION)
 override WERROR_FLAG := @WERROR_FLAG@
 override PKGCONF_CFLAGS := @PKGCONF_CFLAGS@
 override PKGCONF_CPPFLAGS := @PKGCONF_CPPFLAGS@
@@ -87,32 +88,32 @@ clean:
 distclean: clean
 	rm -rf config.log config.status GNUmakefile
 
-# Create a release tarball.
-.PHONY: dist
-dist:
-	rm -rf "$(PACKAGE_TARNAME)-$(PACKAGE_VERSION)"
-	$(MKDIR_P) "$(PACKAGE_TARNAME)-$(PACKAGE_VERSION)"
-	cp -rp '$(call SHESCAPE,$(SRCDIR))'/.git "$(PACKAGE_TARNAME)-$(PACKAGE_VERSION)"/
-	cd "$(PACKAGE_TARNAME)-$(PACKAGE_VERSION)" && git checkout .
-	cd "$(PACKAGE_TARNAME)-$(PACKAGE_VERSION)" && ./bootstrap
-	rm -rf "$(PACKAGE_TARNAME)-$(PACKAGE_VERSION)"/.git
-	rm -rf "$(PACKAGE_TARNAME)-$(PACKAGE_VERSION)"/.gitignore
-	rm -rf "$(PACKAGE_TARNAME)-$(PACKAGE_VERSION)"/.github
-	rm -rf "$(PACKAGE_TARNAME)-$(PACKAGE_VERSION)"/autom4te.cache
-	rm -rf "$(PACKAGE_TARNAME)-$(PACKAGE_VERSION)"/src/flanterm/.git
-	rm -rf "$(PACKAGE_TARNAME)-$(PACKAGE_VERSION)"/src/flanterm/.gitignore
-	echo "$(PACKAGE_VERSION)" >"$(PACKAGE_TARNAME)-$(PACKAGE_VERSION)"/version
-	tar -cf "$(PACKAGE_TARNAME)-$(PACKAGE_VERSION).tar" "$(PACKAGE_TARNAME)-$(PACKAGE_VERSION)"
-	gzip < "$(PACKAGE_TARNAME)-$(PACKAGE_VERSION).tar" > "$(PACKAGE_TARNAME)-$(PACKAGE_VERSION).tar.gz"
-	( bzip2 < "$(PACKAGE_TARNAME)-$(PACKAGE_VERSION).tar" > "$(PACKAGE_TARNAME)-$(PACKAGE_VERSION).tar.bz2" || rm "$(PACKAGE_TARNAME)-$(PACKAGE_VERSION).tar.bz2" )
-	( xz < "$(PACKAGE_TARNAME)-$(PACKAGE_VERSION).tar" > "$(PACKAGE_TARNAME)-$(PACKAGE_VERSION).tar.xz" || rm "$(PACKAGE_TARNAME)-$(PACKAGE_VERSION).tar.xz" )
-	rm "$(PACKAGE_TARNAME)-$(PACKAGE_VERSION).tar"
-	rm -rf "$(PACKAGE_TARNAME)-$(PACKAGE_VERSION)"
-
 # Remove ALL generated files.
 .PHONY: maintainer-clean
 maintainer-clean: distclean
 	cd '$(call SHESCAPE,$(SRCDIR))' && rm -rf src/flanterm configure build-aux *'~' autom4te.cache aclocal.m4
+
+# Create a release tarball.
+.PHONY: dist
+dist:
+	rm -rf "$(DIST_OUTPUT)"
+	$(MKDIR_P) "$(DIST_OUTPUT)"
+	cp -rp '$(call SHESCAPE,$(SRCDIR))'/.git "$(DIST_OUTPUT)"/
+	cd "$(DIST_OUTPUT)" && git checkout .
+	cd "$(DIST_OUTPUT)" && ./bootstrap
+	rm -rf "$(DIST_OUTPUT)"/.git
+	rm -rf "$(DIST_OUTPUT)"/.gitignore
+	rm -rf "$(DIST_OUTPUT)"/.github
+	rm -rf "$(DIST_OUTPUT)"/autom4te.cache
+	rm -rf "$(DIST_OUTPUT)"/src/flanterm/.git
+	rm -rf "$(DIST_OUTPUT)"/src/flanterm/.gitignore
+	echo "$(PACKAGE_VERSION)" >"$(DIST_OUTPUT)"/version
+	tar -cf "$(DIST_OUTPUT).tar" "$(DIST_OUTPUT)"
+	gzip < "$(DIST_OUTPUT).tar" > "$(DIST_OUTPUT).tar.gz"
+	( bzip2 < "$(DIST_OUTPUT).tar" > "$(DIST_OUTPUT).tar.bz2" || rm "$(DIST_OUTPUT).tar.bz2" )
+	( xz < "$(DIST_OUTPUT).tar" > "$(DIST_OUTPUT).tar.xz" || rm "$(DIST_OUTPUT).tar.xz" )
+	rm "$(DIST_OUTPUT).tar"
+	rm -rf "$(DIST_OUTPUT)"
 
 # Install files and executables to the final locations.
 .PHONY: install

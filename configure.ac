@@ -10,17 +10,39 @@ AC_SUBST([SRCDIR])
 
 AC_CANONICAL_HOST
 
-AC_DEFUN([PROG_ABSPATH], [
-    case "$$1" in
-        .*) $1="$(cd "$(dirname "$$1")" && pwd -P)/$(basename "$$1")" ;;
-    esac
-])
+# Portably convert relative paths into absolute paths.
+rel2abs() {
+    rel2abs_first=true
+    for i in $1; do
+        if test $rel2abs_first = true; then
+            case "$i" in
+                /*)
+                    printf "%s" "$i"
+                    ;;
+                */*)
+                    if test -d "$(dirname "$i")"; then
+                        printf "%s" "$(cd "$(dirname "$i")" && pwd -P)/$(basename "$i")"
+                    else
+                        printf "false"
+                    fi
+                    ;;
+                *)
+                    printf "%s" "$i"
+                    ;;
+            esac
+            rel2abs_first=false
+        else
+            printf " %s" "$i"
+        fi
+    done
+    printf "\n"
+}
 
 test "x${CFLAGS+set}" = "x" && CFLAGS='-g -O2 -pipe'
 
 AC_LANG([C])
 AC_PROG_CC
-PROG_ABSPATH([CC])
+CC="$(rel2abs "$CC")"
 
 werror_state="no"
 AC_ARG_ENABLE([werror],
@@ -33,45 +55,51 @@ else
 fi
 
 AC_PROG_MKDIR_P
-PROG_ABSPATH([MKDIR_P])
+MKDIR_P="$(rel2abs "$MKDIR_P")"
 AC_PROG_INSTALL
-PROG_ABSPATH([INSTALL])
+INSTALL="$(rel2abs "$INSTALL")"
 
 AC_CHECK_PROG([FIND_FOUND], [find], [yes])
 if ! test "x$FIND_FOUND" = "xyes"; then
     AC_MSG_ERROR([find not found, please install find before configuring])
 fi
 
-AC_ARG_VAR([STRIP], [strip command])
+# $1 - UPPERCASEVAR, $2 - default program
+AC_DEFUN([GET_PROG_FROM_TOOLCHAIN], [
+    AC_ARG_VAR([$1], [$2 command @<:@default: $2@:>@])
 
-if ! test -z "$STRIP"; then
-    if test -x "$STRIP"; then
-        STRIP_USER_FOUND=yes
+    if ! test -z "$$1"; then
+        first_elem="$(echo "$$1" | cut -f 1 -d " ")"
+        case "$first_elem" in
+            */*)
+                if test -f "$first_elem" && test -x "$first_elem"; then
+                    $1_USER_FOUND=yes
+                fi
+                ;;
+            *)
+                AC_CHECK_PROG([$1_USER_FOUND], [$$1], [yes])
+                ;;
+        esac
+
+        if ! test "x$$1_USER_FOUND" = "xyes"; then
+            AC_MSG_ERROR([$2 not found, please install $2 before configuring])
+        fi
     else
-        AC_CHECK_PROG([STRIP_USER_FOUND], [$STRIP], [yes])
-    fi
-
-    if ! test "x$STRIP_USER_FOUND" = "xyes"; then
-        AC_MSG_ERROR([$STRIP not found, please install $STRIP before configuring])
-    fi
-else
-    STRIP="$($CC -dumpmachine)"-strip
-    AC_CHECK_PROG([STRIP_FOUND], [$STRIP], [yes])
-    if ! test "x$STRIP_FOUND" = "xyes"; then
-        STRIP=strip
-        AC_CHECK_PROG([STRIP_DEFAULT_FOUND], [$STRIP], [yes])
-        if ! test "x$STRIP_DEFAULT_FOUND" = "xyes"; then
-            AC_MSG_ERROR([$STRIP not found, please install $STRIP before configuring])
+        AC_CHECK_TOOL([$1], [$2], [:])
+        if test "x$$1" = "x:"; then
+            AC_MSG_ERROR([$2 not found, please install $2 or set $1 to a valid command])
         fi
     fi
-fi
 
-AC_SUBST([STRIP])
+    $1="$(rel2abs "$$1")"
+])
+
+GET_PROG_FROM_TOOLCHAIN([STRIP], [strip])
 
 PKGCONF_LIBS_LIST=""
 
 PKG_PROG_PKG_CONFIG
-PROG_ABSPATH([PKG_CONFIG])
+PKG_CONFIG="$(rel2abs "$PKG_CONFIG")"
 
 for lib in $PKGCONF_LIBS_LIST; do
     set -e
