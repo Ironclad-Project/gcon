@@ -37,18 +37,18 @@ clone_repo_commit() {
 
 download_by_hash() {
     DOWNLOAD_COMMAND="curl -Lo"
-    if ! command -v $DOWNLOAD_COMMAND >/dev/null 2>&1; then
+    if ! command -v "${DOWNLOAD_COMMAND%% *}" >/dev/null 2>&1; then
         DOWNLOAD_COMMAND="wget -O"
-        if ! command -v $DOWNLOAD_COMMAND >/dev/null 2>&1; then
+        if ! command -v "${DOWNLOAD_COMMAND%% *}" >/dev/null 2>&1; then
             set +x
             echo "error: Neither curl nor wget found"
             exit 1
         fi
     fi
     SHA256_COMMAND="sha256sum"
-    if ! command -v $SHA256_COMMAND >/dev/null 2>&1; then
+    if ! command -v "${SHA256_COMMAND%% *}" >/dev/null 2>&1; then
         SHA256_COMMAND="sha256"
-        if ! command -v $SHA256_COMMAND >/dev/null 2>&1; then
+        if ! command -v "${SHA256_COMMAND%% *}" >/dev/null 2>&1; then
             set +x
             echo "error: Cannot find sha256(sum) command"
             exit 1
@@ -73,7 +73,7 @@ if ! test -f version; then
     clone_repo_commit \
         https://github.com/mintsuki/flanterm.git \
         src/flanterm \
-        b16d2649c02af0104392ff47263626e5ea6ca8a5
+        201100c968ad6db4f38632f9b6c3544854897788
 fi
 
 for auxfile in $AUXFILES; do
