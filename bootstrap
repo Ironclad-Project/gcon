@@ -70,10 +70,11 @@ download_by_hash() {
 }
 
 if ! test -f version; then
+    # 1.0.1
     clone_repo_commit \
         https://github.com/mintsuki/flanterm.git \
         src/flanterm \
-        201100c968ad6db4f38632f9b6c3544854897788
+        409a298eb2d44748e0159c5e5b2ed2ef679879b9
 fi
 
 for auxfile in $AUXFILES; do

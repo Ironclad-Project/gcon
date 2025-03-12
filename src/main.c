@@ -136,10 +136,10 @@ static void do_tty_switch(int tty_idx) {
         sched_yield();
     }
 
-    ttys[current_tty].context->autoflush = false;
-    ttys[tty_idx].context->autoflush = true;
-    ttys[tty_idx].context->full_refresh(ttys[tty_idx].context);
-    ttys[tty_idx].context->double_buffer_flush(ttys[tty_idx].context);
+    flanterm_set_autoflush(ttys[current_tty].context, false);
+    flanterm_set_autoflush(ttys[tty_idx].context, true);
+    flanterm_full_refresh(ttys[tty_idx].context);
+    flanterm_flush(ttys[tty_idx].context);
     current_tty = tty_idx;
 
     if (!ttys[tty_idx].has_init_program) {
@@ -479,8 +479,8 @@ int main(void) {
             1, 1,
             0
         );
-        ttys[i].context->callback = flanterm_callback;
-        ttys[i].context->autoflush = false;
+        flanterm_set_callback(ttys[i].context, flanterm_callback);
+        flanterm_set_autoflush(ttys[i].context, false);
         ttys[i].has_init_program = 0;
 
         // Free the mutex.
