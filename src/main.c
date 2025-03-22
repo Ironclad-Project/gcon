@@ -160,7 +160,17 @@ static void do_tty_switch(int tty_idx) {
 }
 
 static void add_to_buf_char(struct termios *termios, char c, bool echo) {
-    if (c == '\n' && (termios->c_iflag & ICRNL) == 0) {
+    if (c == '\r' && ((termios->c_iflag & IGNCR) != 0)) {
+        return;
+    }
+
+    if (c == '\n' && ((termios->c_iflag & ICRNL) == 0)) {
+        c = '\r';
+    } else if (c == '\r' && ((termios->c_iflag & ICRNL) != 0)) {
+        c = '\n';
+    } else if (c == '\r' && ((termios->c_iflag & INLCR) == 0)) {
+        c = '\n';
+    } else if (c == '\n' && ((termios->c_iflag & INLCR) != 0)) {
         c = '\r';
     }
 
@@ -184,7 +194,7 @@ static void add_to_buf_char(struct termios *termios, char c, bool echo) {
                 }
                 kbd_buffer_i--;
                 size_t to_backspace;
-                if (kbd_buffer[kbd_buffer_i] >= 0x01 && kbd_buffer[kbd_buffer_i] <= 0x1a) {
+                if (kbd_buffer[kbd_buffer_i] >= 0x01 && kbd_buffer[kbd_buffer_i] <= 0x1f) {
                     to_backspace = 2;
                 } else {
                     to_backspace = 1;
@@ -210,7 +220,7 @@ static void add_to_buf_char(struct termios *termios, char c, bool echo) {
     if (echo && (termios->c_lflag & ECHO) != 0) {
         if (c >= 0x20 && c <= 0x7e) {
             locked_term_write(current_tty, &c, 1);
-        } else if (c >= 0x01 && c <= 0x1a) {
+        } else if (c >= 0x01 && c <= 0x1f) {
             char caret[2];
             caret[0] = '^';
             caret[1] = c + 0x40;
